@@ -24,15 +24,17 @@ function Spinner() {
 
 function formatDateTime(iso) {
   if (!iso) return '—'
-  try {
-    return new Date(iso).toLocaleString('en-US', {
-      weekday: 'short',
-      year: 'numeric',
-      month: 'short',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
+try {
+  return new Date(iso + 'Z').toLocaleString('en-IN', {
+    weekday: 'short',
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: 'Asia/Kolkata'
+  })
   } catch {
     return iso
   }

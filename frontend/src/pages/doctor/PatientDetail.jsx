@@ -2,274 +2,969 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 
+const API = 'http://localhost:8000'
+
 const STATUS_CONFIG = {
-  stable:     { color: '#3dffc0', bg: 'rgba(61,255,192,0.1)',  label: 'Stable' },
-  monitoring: { color: '#ffb547', bg: 'rgba(255,181,71,0.1)',  label: 'Monitoring' },
-  critical:   { color: '#ff5b7f', bg: 'rgba(255,91,127,0.1)', label: 'Critical' },
-  active:     { color: '#3dffc0', bg: 'rgba(61,255,192,0.1)',  label: 'Active' },
-  pending:    { color: '#ffb547', bg: 'rgba(255,181,71,0.1)',  label: 'Pending' },
+  stable: {
+    color: '#3dffc0',
+    bg: 'rgba(61,255,192,0.1)',
+    label: 'Stable'
+  },
+  monitoring: {
+    color: '#ffb547',
+    bg: 'rgba(255,181,71,0.1)',
+    label: 'Monitoring'
+  },
+  critical: {
+    color: '#ff5b7f',
+    bg: 'rgba(255,91,127,0.1)',
+    label: 'Critical'
+  },
+  active: {
+    color: '#3dffc0',
+    bg: 'rgba(61,255,192,0.1)',
+    label: 'Active'
+  },
+  pending: {
+    color: '#ffb547',
+    bg: 'rgba(255,181,71,0.1)',
+    label: 'Pending'
+  },
 }
 
 export default function PatientDetail() {
+
   const { id } = useParams()
   const navigate = useNavigate()
 
   const [patient, setPatient] = useState(null)
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
-  const [showModal, setShowModal] = useState(false)
-  const [editRecord, setEditRecord] = useState(null)
+
+  const [showModal, setShowModal] =
+    useState(false)
+
+  const [editRecord, setEditRecord] =
+    useState(null)
+
+  // ─────────────────────────────────────
+  // FETCH PATIENT
+  // ─────────────────────────────────────
 
   const fetchPatient = async () => {
-    const { data } = await supabase
-      .from('patients')
-      .select('*')
-      .eq('id', id)
-      .single()
-    setPatient(data)
+
+    try {
+
+      const { data, error } =
+        await supabase
+          .from('patients')
+          .select('*')
+          .eq('id', id)
+          .single()
+
+      if (error) {
+        console.error(error)
+        return null
+      }
+
+      setPatient(data)
+
+      return data
+
+    } catch (err) {
+
+      console.error(err)
+
+      return null
+    }
   }
+
+  // ─────────────────────────────────────
+  // FETCH HISTORY
+  // ─────────────────────────────────────
 
   const fetchHistory = async () => {
-    const { data } = await supabase
-      .from('patient_history')
-      .select('*')
-      .eq('patient_id', id)
-      .order('created_at', { ascending: false })
-    setHistory(data || [])
+
+    try {
+
+      const {
+        data: { session }
+      } = await supabase.auth.getSession()
+
+      const token = session?.access_token
+
+      if (!token) return
+
+      const res = await fetch(
+        `${API}/patients/${id}/history`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      )
+
+      const data = await res.json()
+
+     
+
+      if (Array.isArray(data.history)) {
+
+        setHistory(data.history)
+
+      } else {
+
+        setHistory([])
+      }
+
+    } catch (err) {
+
+      console.error(
+        'History fetch failed:',
+        err
+      )
+
+      setHistory([])
+    }
   }
+
+  // ─────────────────────────────────────
+  // LOAD PAGE
+  // ─────────────────────────────────────
 
   useEffect(() => {
+
     const load = async () => {
+
       setLoading(true)
+
       await fetchPatient()
+
       await fetchHistory()
+
       setLoading(false)
     }
+
     load()
+
   }, [id])
 
+  // ─────────────────────────────────────
+  // DELETE HISTORY
+  // ─────────────────────────────────────
+
   const handleDelete = async (histId) => {
-    if (!window.confirm('Delete this record?')) return
-    await supabase.from('patient_history').delete().eq('id', histId)
-    await fetchHistory()
+
+    if (
+      !window.confirm(
+        'Delete this history record?'
+      )
+    ) return
+
+    try {
+
+      const {
+        data: { session }
+      } = await supabase.auth.getSession()
+
+      const token = session?.access_token
+
+      await fetch(
+        `${API}/patients/history/${histId}`,
+        {
+          method: 'DELETE',
+
+          headers: {
+            Authorization:
+              `Bearer ${token}`
+          }
+        }
+      )
+
+      await fetchHistory()
+
+    } catch (err) {
+
+      console.error(err)
+    }
   }
 
-  if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg, #0f1117)', color: 'var(--text-2, #8b92a5)' }}>
-      Loading patient…
-    </div>
-  )
+  // ─────────────────────────────────────
+  // LOADING
+  // ─────────────────────────────────────
 
-  if (!patient) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg, #0f1117)', color: '#ff5b7f' }}>
-      Patient not found.
-    </div>
-  )
+  if (loading) {
 
-  const cfg = STATUS_CONFIG[patient.status] || STATUS_CONFIG.pending
-  const initials = patient.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100vh',
+        background: '#0f1117',
+        color: '#8b92a5'
+      }}>
+        Loading patient...
+      </div>
+    )
+  }
+
+  // ─────────────────────────────────────
+  // NOT FOUND
+  // ─────────────────────────────────────
+
+  if (!patient) {
+
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100vh',
+        background: '#0f1117',
+        color: '#ff5b7f'
+      }}>
+        Patient not found
+      </div>
+    )
+  }
+
+  const cfg =
+    STATUS_CONFIG[patient.status]
+    || STATUS_CONFIG.pending
+
+  const initials =
+    patient.name
+      ?.split(' ')
+      .map(n => n[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase()
 
   return (
+
     <div style={styles.page}>
-      {/* Header */}
+
+      {/* TOPBAR */}
+
       <div style={styles.topbar}>
-        <button style={styles.backBtn} onClick={() => navigate(-1)}>
-          <ArrowLeftIcon /> Back
+
+        <button
+          style={styles.backBtn}
+          onClick={() => navigate(-1)}
+        >
+          <ArrowLeftIcon />
+          Back
         </button>
-        <span style={styles.breadcrumb}>Patients / <strong>{patient.name}</strong></span>
+
+        <span style={styles.breadcrumb}>
+          Patients /
+          <strong>
+            {' '}
+            {patient.name}
+          </strong>
+        </span>
+
       </div>
 
-      {/* Profile Card */}
+      {/* PROFILE */}
+
       <div style={styles.profileCard}>
-        <div style={styles.avatarLg}>{initials}</div>
+
+        <div style={styles.avatarLg}>
+          {initials}
+        </div>
+
         <div style={styles.profileInfo}>
-          <h1 style={styles.patientName}>{patient.name}</h1>
+
+          <h1 style={styles.patientName}>
+            {patient.name}
+          </h1>
+
           <div style={styles.metaRow}>
-            {patient.age && <MetaChip icon="🎂" label={`${patient.age} yrs`} />}
-            {patient.gender && <MetaChip icon="⚧" label={patient.gender} />}
-            {patient.blood_group && <MetaChip icon="🩸" label={patient.blood_group} />}
-            {patient.phone && <MetaChip icon="📞" label={patient.phone} />}
-            {patient.email && <MetaChip icon="✉️" label={patient.email} />}
+
+            {patient.age && (
+              <MetaChip
+                icon="🎂"
+                label={`${patient.age} yrs`}
+              />
+            )}
+
+            {patient.gender && (
+              <MetaChip
+                icon="⚧"
+                label={patient.gender}
+              />
+            )}
+
+            {patient.blood_group && (
+              <MetaChip
+                icon="🩸"
+                label={patient.blood_group}
+              />
+            )}
+
+            {patient.phone && (
+              <MetaChip
+                icon="📞"
+                label={patient.phone}
+              />
+            )}
+
+            {patient.email && (
+              <MetaChip
+                icon="✉️"
+                label={patient.email}
+              />
+            )}
+
           </div>
+
           {patient.medical_history && (
-            <p style={styles.medHistory}><span style={{ opacity: 0.5 }}>History: </span>{patient.medical_history}</p>
+            <p style={styles.medHistory}>
+              <span style={{
+                opacity: 0.5
+              }}>
+                History:
+              </span>
+
+              {' '}
+              {patient.medical_history}
+            </p>
           )}
+
         </div>
+
         <div style={styles.profileRight}>
-          <span style={{ ...styles.statusPill, color: cfg.color, background: cfg.bg }}>
-            <span style={{ ...styles.statusDot, background: cfg.color }} />
+
+          <span style={{
+            ...styles.statusPill,
+            color: cfg.color,
+            background: cfg.bg
+          }}>
+
+            <span style={{
+              ...styles.statusDot,
+              background: cfg.color
+            }} />
+
             {cfg.label}
+
           </span>
+
         </div>
+
       </div>
 
-      {/* Patient History Section */}
+      {/* HISTORY */}
+
       <div style={styles.section}>
+
         <div style={styles.sectionHeader}>
-          <h2 style={styles.sectionTitle}>Patient History</h2>
-          <button style={styles.addBtn} onClick={() => { setEditRecord(null); setShowModal(true) }}>
-            <PlusIcon /> Add Record
+
+          <h2 style={styles.sectionTitle}>
+            Patient History
+          </h2>
+
+          <button
+            style={styles.addBtn}
+            onClick={() => {
+              setEditRecord(null)
+              setShowModal(true)
+            }}
+          >
+            <PlusIcon />
+            Add History
           </button>
+
         </div>
 
-        {history.length === 0 ? (
+        {history.length === 0 && (
+
           <div style={styles.emptyState}>
-            <span style={{ fontSize: 32 }}>🗂️</span>
-            <p>No history records yet. Add the first one.</p>
+            No patient history found.
           </div>
-        ) : (
+
+        )}
+
+        {history.length > 0 && (
+
           <div style={styles.historyList}>
-            {history.map((h, i) => (
-              <div key={h.id} style={{ ...styles.historyCard, animationDelay: `${i * 0.06}s` }}>
+
+            {history.map((h) => (
+
+              <div
+                key={h.id}
+                style={styles.historyCard}
+              >
+
                 <div style={styles.historyCardHeader}>
+
                   <div style={styles.historyDate}>
-                    {new Date(h.created_at).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {new Date(
+                      h.created_at
+                    ).toLocaleDateString()}
                   </div>
+
                   <div style={styles.historyActions}>
-                    <button style={styles.iconBtnSm} title="Edit" onClick={() => { setEditRecord(h); setShowModal(true) }}>
+
+                    {/* EDIT */}
+
+                    <button
+                      style={styles.iconBtnSm}
+                      onClick={() => {
+                        setEditRecord(h)
+                        setShowModal(true)
+                      }}
+                    >
                       <EditIcon />
                     </button>
-                    <button style={{ ...styles.iconBtnSm, color: '#ff5b7f' }} title="Delete" onClick={() => handleDelete(h.id)}>
+
+                    {/* DELETE */}
+
+                    <button
+                      style={{
+                        ...styles.iconBtnSm,
+                        color: '#ff5b7f'
+                      }}
+                      onClick={() =>
+                        handleDelete(h.id)
+                      }
+                    >
                       <TrashIcon />
                     </button>
+
                   </div>
+
                 </div>
+
                 <div style={styles.historyBody}>
+
                   {h.diagnosis && (
                     <div style={styles.historyField}>
-                      <span style={styles.fieldLabel}>Diagnosis</span>
-                      <span style={styles.fieldValue}>{h.diagnosis}</span>
+
+                      <span style={styles.fieldLabel}>
+                        Diagnosis
+                      </span>
+
+                      <span style={styles.fieldValue}>
+                        {h.diagnosis}
+                      </span>
+
                     </div>
                   )}
+
                   {h.prescription && (
                     <div style={styles.historyField}>
-                      <span style={styles.fieldLabel}>Prescription</span>
-                      <span style={styles.fieldValue}>{h.prescription}</span>
+
+                      <span style={styles.fieldLabel}>
+                        Prescription
+                      </span>
+
+                      <span style={styles.fieldValue}>
+                        {h.prescription}
+                      </span>
+
                     </div>
                   )}
+
                   {h.notes && (
                     <div style={styles.historyField}>
-                      <span style={styles.fieldLabel}>Notes</span>
-                      <span style={styles.fieldValue}>{h.notes}</span>
+
+                      <span style={styles.fieldLabel}>
+                        Notes
+                      </span>
+
+                      <span style={styles.fieldValue}>
+                        {h.notes}
+                      </span>
+
                     </div>
                   )}
+
                 </div>
+
               </div>
+
             ))}
+
           </div>
+
         )}
+
       </div>
 
-      {/* Add/Edit History Modal */}
+      {/* MODAL */}
+
       {showModal && (
+
         <HistoryModal
           patientId={id}
           record={editRecord}
-          onClose={() => { setShowModal(false); setEditRecord(null) }}
-          onSuccess={async () => { setShowModal(false); setEditRecord(null); await fetchHistory() }}
+          onClose={() => {
+            setShowModal(false)
+            setEditRecord(null)
+          }}
+          onSuccess={async () => {
+
+            setShowModal(false)
+
+            setEditRecord(null)
+
+            await fetchHistory()
+          }}
         />
+
       )}
+
     </div>
   )
 }
 
-// ── Add/Edit Modal ──────────────────────────────────────────────────────────
-function HistoryModal({ patientId, record, onClose, onSuccess }) {
+// ─────────────────────────────────────
+// HISTORY MODAL
+// ─────────────────────────────────────
+
+function HistoryModal({
+  patientId,
+  record,
+  onClose,
+  onSuccess
+}) {
+
   const isEdit = !!record
+
   const [form, setForm] = useState({
-    diagnosis: record?.diagnosis || '',
-    prescription: record?.prescription || '',
-    notes: record?.notes || '',
+    diagnosis:
+      record?.diagnosis || '',
+
+    prescription:
+      record?.prescription || '',
+
+    notes:
+      record?.notes || '',
   })
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
+
+  const [saving, setSaving] =
+    useState(false)
+
+  const [error, setError] =
+    useState('')
 
   const handleSubmit = async () => {
-    if (!form.diagnosis.trim()) { setError('Diagnosis is required.'); return }
-    setSaving(true)
-    setError('')
 
-    // Get current doctor id
-    const { data: { user } } = await supabase.auth.getUser()
-    const { data: doctorData } = await supabase
-      .from('doctors')
-      .select('id')
-      .eq('user_id', user.id)
-      .single()
+    if (!form.diagnosis.trim()) {
 
-    if (!doctorData) { setError('Could not find your doctor profile.'); setSaving(false); return }
+      setError(
+        'Diagnosis is required'
+      )
 
-    if (isEdit) {
-      const { error: err } = await supabase
-        .from('patient_history')
-        .update({ diagnosis: form.diagnosis, prescription: form.prescription, notes: form.notes })
-        .eq('id', record.id)
-      if (err) { setError(err.message); setSaving(false); return }
-    } else {
-      const { error: err } = await supabase
-        .from('patient_history')
-        .insert({ patient_id: patientId, doctor_id: doctorData.id, ...form })
-      if (err) { setError(err.message); setSaving(false); return }
+      return
     }
 
-    setSaving(false)
-    onSuccess()
+    try {
+
+      setSaving(true)
+
+      setError('')
+
+      const {
+        data: { session }
+      } = await supabase.auth.getSession()
+
+      const token =
+        session?.access_token
+
+      if (!token) {
+
+        setError(
+          'User not logged in'
+        )
+
+        return
+      }
+
+      const {
+        data: { user }
+      } = await supabase.auth.getUser()
+
+      const {
+        data: doctorData,
+        error: doctorError
+      } = await supabase
+        .from('doctors')
+        .select('id')
+        .eq('user_id', user.id)
+        .single()
+
+      if (
+        doctorError ||
+        !doctorData
+      ) {
+
+        console.error(
+          doctorError
+        )
+
+        setError(
+          'Doctor profile not found'
+        )
+
+        return
+      }
+
+      // ─────────────────────────
+      // UPDATE
+      // ─────────────────────────
+
+      if (isEdit) {
+
+        const res = await fetch(
+          `${API}/patients/history/${record.id}`,
+          {
+            method: 'PUT',
+
+            headers: {
+              'Content-Type':
+                'application/json',
+
+              Authorization:
+                `Bearer ${token}`
+            },
+
+            body: JSON.stringify({
+              diagnosis:
+                form.diagnosis,
+
+              prescription:
+                form.prescription,
+
+              notes:
+                form.notes,
+            })
+          }
+        )
+
+        const data =
+          await res.json()
+
+        if (!res.ok) {
+
+          setError(
+            data.detail ||
+            'Failed to update'
+          )
+
+          return
+        }
+      }
+
+      // ─────────────────────────
+      // CREATE
+      // ─────────────────────────
+
+      else {
+
+        const res = await fetch(
+          `${API}/patients/history`,
+          {
+            method: 'POST',
+
+            headers: {
+              'Content-Type':
+                'application/json',
+
+              Authorization:
+                `Bearer ${token}`
+            },
+
+            body: JSON.stringify({
+
+              patient_id:
+                patientId,
+
+              doctor_id:
+                doctorData.id,
+
+              diagnosis:
+                form.diagnosis,
+
+              prescription:
+                form.prescription,
+
+              notes:
+                form.notes,
+            })
+          }
+        )
+
+        const data =
+          await res.json()
+
+       
+
+        if (!res.ok) {
+
+          setError(
+            data.detail ||
+            'Failed to save'
+          )
+
+          return
+        }
+      }
+
+      onSuccess()
+
+    } catch (err) {
+
+      console.error(err)
+
+      setError(
+        'Something went wrong'
+      )
+
+    } finally {
+
+      setSaving(false)
+    }
   }
 
   return (
-    <div style={styles.overlay} onClick={e => e.target === e.currentTarget && onClose()}>
+
+    <div
+      style={styles.overlay}
+      onClick={(e) => {
+
+        if (
+          e.target === e.currentTarget
+        ) {
+          onClose()
+        }
+      }}
+    >
+
       <div style={styles.modal}>
+
         <div style={styles.modalHeader}>
-          <h3 style={styles.modalTitle}>{isEdit ? 'Edit Record' : 'Add Patient History'}</h3>
-          <button style={styles.closeBtn} onClick={onClose}>✕</button>
+
+          <h3 style={styles.modalTitle}>
+            {isEdit
+              ? 'Edit History'
+              : 'Add History'}
+          </h3>
+
+          <button
+            style={styles.closeBtn}
+            onClick={onClose}
+          >
+            ✕
+          </button>
+
         </div>
 
         <div style={styles.modalBody}>
-          <Field label="Diagnosis *" value={form.diagnosis} onChange={v => setForm(f => ({ ...f, diagnosis: v }))} placeholder="e.g. Hypertension Stage 2" />
-          <Field label="Prescription" value={form.prescription} onChange={v => setForm(f => ({ ...f, prescription: v }))} placeholder="e.g. Amlodipine 5mg once daily" multiline />
-          <Field label="Notes" value={form.notes} onChange={v => setForm(f => ({ ...f, notes: v }))} placeholder="Additional observations..." multiline />
 
-          {error && <p style={styles.errorMsg}>{error}</p>}
+          <Field
+            label="Diagnosis *"
+            value={form.diagnosis}
+            onChange={(v) =>
+              setForm(f => ({
+                ...f,
+                diagnosis: v
+              }))
+            }
+            placeholder="Diagnosis"
+          />
+
+          <Field
+            label="Prescription"
+            multiline
+            value={form.prescription}
+            onChange={(v) =>
+              setForm(f => ({
+                ...f,
+                prescription: v
+              }))
+            }
+            placeholder="Prescription"
+          />
+
+          <Field
+            label="Notes"
+            multiline
+            value={form.notes}
+            onChange={(v) =>
+              setForm(f => ({
+                ...f,
+                notes: v
+              }))
+            }
+            placeholder="Notes"
+          />
+
+          {error && (
+            <p style={styles.errorMsg}>
+              {error}
+            </p>
+          )}
+
         </div>
 
         <div style={styles.modalFooter}>
-          <button style={styles.cancelBtn} onClick={onClose}>Cancel</button>
-          <button style={styles.saveBtn} onClick={handleSubmit} disabled={saving}>
-            {saving ? 'Saving…' : isEdit ? 'Update Record' : 'Save Record'}
+
+          <button
+            style={styles.cancelBtn}
+            onClick={onClose}
+          >
+            Cancel
           </button>
+
+          <button
+            style={styles.saveBtn}
+            onClick={handleSubmit}
+            disabled={saving}
+          >
+            {saving
+              ? 'Saving...'
+              : isEdit
+                ? 'Update'
+                : 'Save'}
+          </button>
+
         </div>
+
       </div>
+
     </div>
   )
 }
 
-function Field({ label, value, onChange, placeholder, multiline }) {
-  const props = { value, placeholder, onChange: e => onChange(e.target.value), style: multiline ? styles.textarea : styles.input }
+// ─────────────────────────────────────
+// FIELD
+// ─────────────────────────────────────
+
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+  multiline
+}) {
+
+  const props = {
+    value,
+    placeholder,
+
+    onChange: (e) =>
+      onChange(e.target.value),
+
+    style: multiline
+      ? styles.textarea
+      : styles.input
+  }
+
   return (
+
     <div style={styles.fieldGroup}>
-      <label style={styles.label}>{label}</label>
-      {multiline ? <textarea {...props} rows={3} /> : <input {...props} />}
+
+      <label style={styles.label}>
+        {label}
+      </label>
+
+      {multiline
+        ? <textarea {...props} rows={4} />
+        : <input {...props} />
+      }
+
     </div>
   )
 }
 
-function MetaChip({ icon, label }) {
-  return <span style={styles.metaChip}>{icon} {label}</span>
+function MetaChip({
+  icon,
+  label
+}) {
+
+  return (
+    <span style={styles.metaChip}>
+      {icon} {label}
+    </span>
+  )
 }
 
-// ── Icons ───────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────
+// ICONS
+// ─────────────────────────────────────
+
 function ArrowLeftIcon() {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path d="M19 12H5"/>
+      <polyline points="12 19 5 12 12 5"/>
+    </svg>
+  )
 }
+
 function PlusIcon() {
-  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+    >
+      <line x1="12" y1="5" x2="12" y2="19"/>
+      <line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+  )
 }
+
 function EditIcon() {
-  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+    </svg>
+  )
 }
+
 function TrashIcon() {
-  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+    >
+      <polyline points="3 6 5 6 21 6"/>
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+      <path d="M10 11v6"/>
+      <path d="M14 11v6"/>
+      <path d="M9 6V4h6v2"/>
+    </svg>
+  )
 }
+
+// KEEP YOUR EXISTING styles OBJECT HERE
 
 // ── Styles ──────────────────────────────────────────────────────────────────
 const styles = {
@@ -362,6 +1057,14 @@ const styles = {
   historyField: { display: 'flex', flexDirection: 'column', gap: 4 },
   fieldLabel: { fontSize: '0.72rem', fontWeight: 600, color: 'var(--primary, #6366f1)', textTransform: 'uppercase', letterSpacing: '0.06em' },
   fieldValue: { fontSize: '0.9rem', color: 'var(--text-1, #e8eaf0)', lineHeight: 1.6 },
+
+  historyFormCard: {
+    background: 'rgba(255,255,255,0.03)',
+    border: '1px solid rgba(255,255,255,0.07)',
+    borderRadius: 12,
+    overflow: 'hidden',
+    padding: 20,
+  },
 
   // Modal
   overlay: {

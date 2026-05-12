@@ -1,0 +1,11 @@
+.sidebar-panel-label{
+  color:#fff !important;
+  font-family:var(--font-display);
+  font-size:1.05rem;
+  font-weight:800;
+  text-transform:none;
+  letter-spacing:0.02em;
+  margin:0 0 10px;
+  padding:8px 16px 0;
+}
+

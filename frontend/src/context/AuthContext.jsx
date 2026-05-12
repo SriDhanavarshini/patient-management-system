@@ -199,11 +199,10 @@ export function AuthProvider({ children }) {
         throw insertError
       }
 
-      console.log('Doctor created successfully:', insertData)
       return { error: null }
 
     } catch (err) {
-      console.error('createDoctor error:', err.message)
+
       return { error: err }
     }
   }

@@ -80,6 +80,7 @@ export default function AdminDashboard() {
           <div className="topbar-left">
             <button className="menu-btn" onClick={() => setSidebarOpen(s => !s)}><MenuIcon /></button>
             <div>
+               <h2 className="page-title">Admin Portal</h2>
               <h2 className="page-title">Doctor Management</h2>
               <p className="page-date">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
             </div>

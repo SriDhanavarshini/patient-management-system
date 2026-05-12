@@ -369,12 +369,12 @@
   background: none;
   border: none;
   outline: none;
-  color: var(--text-1);
+  color: #fff;
   font-size: 0.85rem;
   width: 160px;
 }
 
-.search-input::placeholder { color: var(--text-3); }
+.search-input::placeholder { color: rgba(255,255,255,0.9); }
 
 .btn-add {
   display: flex;

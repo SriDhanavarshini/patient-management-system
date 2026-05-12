@@ -18,7 +18,6 @@ export default function SignupForm() {
     setMessage(null);
 
     const { error } = await registerAdmin({ email, password, name, phone });
-console.log("registerAdmin called with:", { email, password, name, phone });
     setLoading(false);
 
     if (error) {

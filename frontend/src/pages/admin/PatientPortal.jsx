@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
 import Sidebar from '../../components/Sidebar'
 import '../Dashboard.css'
+import { useNavigate } from 'react-router-dom'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
@@ -20,7 +20,7 @@ function isValidEmail(e) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// STATUS PILL  — matches Dashboard.css .status-pill style
+// STATUS PILL
 // ─────────────────────────────────────────────────────────────────────────────
 function StatusPill({ status }) {
   const map = {
@@ -38,10 +38,10 @@ function StatusPill({ status }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ADD PATIENT MODAL  — uses Dashboard.css auth-card / input-field styles
+// ADD PATIENT MODAL
 // ─────────────────────────────────────────────────────────────────────────────
 function AddPatientModal({ isOpen, onClose, onSuccess }) {
-  const { admin } = useAuth() 
+  const { admin } = useAuth()
   const [form, setForm]             = useState(EMPTY_FORM)
   const [touched, setTouched]       = useState({})
   const [formError, setFormError]   = useState('')
@@ -87,23 +87,23 @@ function AddPatientModal({ isOpen, onClose, onSuccess }) {
     if (Object.keys(errors).length) return
     setSubmitting(true); setFormError('')
     try {
-if (!admin?.id){
-  setFormError('Session not found. Please log in again.')
-  return
-}
+      if (!admin?.id) {
+        setFormError('Session not found. Please log in again.')
+        return
+      }
       const { error } = await supabase.from('patients').insert({
-  name: form.name.trim(),
-  phone: form.phone.trim(),
-  email: form.email.trim(),
-  gender: form.gender,
-  age: Number(form.age),
-  blood_group: form.blood_group,
-  medical_history: form.medical_history?.trim() || null,
-  doctor_id: form.doctor_id,
-  status: form.status,
- created_by: admin.id,   // ← tracks which admin added this patient
-  created_at: new Date().toISOString(),
-})
+        name: form.name.trim(),
+        phone: form.phone.trim(),
+        email: form.email.trim(),
+        gender: form.gender,
+        age: Number(form.age),
+        blood_group: form.blood_group,
+        medical_history: form.medical_history?.trim() || null,
+        doctor_id: form.doctor_id,
+        status: form.status,
+        created_by: admin.id,
+        created_at: new Date().toISOString(),
+      })
       if (error) { setFormError(error.message || 'Failed to add patient.'); return }
       setSuccess(true)
       onSuccess?.()
@@ -127,7 +127,6 @@ if (!admin?.id){
       onClick={e => { if (e.target === e.currentTarget) { onClose?.(); setFormError('') } }}
     >
       <div className="auth-card" style={{ width: '100%', maxWidth: 580, margin: '24px auto', padding: '32px', maxHeight: '90vh', overflowY: 'auto' }}>
-
         {success ? (
           <div className="success-state">
             <div className="success-icon">
@@ -140,7 +139,6 @@ if (!admin?.id){
           </div>
         ) : (
           <>
-            {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
               <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.4rem', margin: 0 }}>Add New Patient</h2>
               <button onClick={() => { onClose?.(); setFormError('') }}
@@ -159,11 +157,7 @@ if (!admin?.id){
             )}
 
             <form onSubmit={handleSubmit} className="auth-form">
-
-              {/* ── Basic Info ── */}
-              <p style={{ fontSize: '0.72rem', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
-                Basic Info
-              </p>
+              <p style={{ fontSize: '0.72rem', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>Basic Info</p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div className="input-group" style={{ margin: 0 }}>
                   <label>Full Name *</label>
@@ -209,10 +203,7 @@ if (!admin?.id){
                 </div>
               </div>
 
-              {/* ── Assignment ── */}
-              <p style={{ fontSize: '0.72rem', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '20px 0 8px' }}>
-                Assignment
-              </p>
+              <p style={{ fontSize: '0.72rem', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '20px 0 8px' }}>Assignment</p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div className="input-group" style={{ margin: 0 }}>
                   <label>Assigned Doctor *</label>
@@ -237,10 +228,7 @@ if (!admin?.id){
                 </div>
               </div>
 
-              {/* ── Medical History ── */}
-              <p style={{ fontSize: '0.72rem', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '20px 0 8px' }}>
-                Medical History
-              </p>
+              <p style={{ fontSize: '0.72rem', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '20px 0 8px' }}>Medical History</p>
               <div className="input-group">
                 <label>Notes <span style={{ color: 'var(--text-3)', fontWeight: 400 }}>(optional)</span></label>
                 <textarea name="medical_history" className="input-field" rows={3}
@@ -267,33 +255,33 @@ if (!admin?.id){
 // MAIN PAGE
 // ─────────────────────────────────────────────────────────────────────────────
 export default function PatientPortal() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [patients, setPatients]       = useState([])
-  const [loading, setLoading]         = useState(true)
-  const [fetchError, setFetchError]   = useState('')
-  const [modalOpen, setModalOpen]     = useState(false)
-  const [search, setSearch]           = useState('')
+  const navigate = useNavigate()
+  const [sidebarOpen, setSidebarOpen]   = useState(false)
+  const [patients, setPatients]         = useState([])
+  const [loading, setLoading]           = useState(true)
+  const [fetchError, setFetchError]     = useState('')
+  const [modalOpen, setModalOpen]       = useState(false)
+  const [search, setSearch]             = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
-  const [toast, setToast]             = useState(null)
+  const [attendFilter, setAttendFilter] = useState('all') // 'all' | 'attended' | 'yet_to_attend'
+  const [toast, setToast]               = useState(null)
 
+  // ── fetch — includes patient_history for attended/yet-to-attend KPI ────────
   const fetchPatients = useCallback(async () => {
-  setLoading(true); setFetchError('')
-  try {
-    const { data, error } = await supabase
-      .from('patients')
-      .select('id,name,phone,email,gender,age,blood_group,status,created_at,doctors(name,specialization)')
-      .order('created_at', { ascending: false })
-    
-
-    
-    if (error) throw error
-    setPatients(data || [])
-  } catch (err) {
-    setFetchError(err?.message || 'Failed to load patients.')
-  } finally {
-    setLoading(false)
-  }
-}, [])
+    setLoading(true); setFetchError('')
+    try {
+      const { data, error } = await supabase
+        .from('patients')
+        .select('id,name,phone,email,gender,age,blood_group,status,created_at,doctors(name,specialization),patient_history(id)')
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      setPatients(data || [])
+    } catch (err) {
+      setFetchError(err?.message || 'Failed to load patients.')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   useEffect(() => { fetchPatients() }, [fetchPatients])
 
@@ -306,7 +294,12 @@ export default function PatientPortal() {
 
   // ── filtered ───────────────────────────────────────────────────────────────
   const filtered = useMemo(() => patients.filter(p => {
+    // status filter (active / pending / discharged)
     if (statusFilter !== 'all' && p.status !== statusFilter) return false
+    // attend filter (attended / yet_to_attend)
+    if (attendFilter === 'attended'     && (p.patient_history?.length || 0) === 0) return false
+    if (attendFilter === 'yet_to_attend' && (p.patient_history?.length || 0) >  0) return false
+    // search
     if (!search.trim()) return true
     const q = search.toLowerCase()
     return (
@@ -315,27 +308,43 @@ export default function PatientPortal() {
       p.phone?.includes(q) ||
       p.doctors?.name?.toLowerCase().includes(q)
     )
-  }), [patients, statusFilter, search])
+  }), [patients, statusFilter, attendFilter, search])
 
+  // ── stats / KPI cards ─────────────────────────────────────────────────────
   const stats = [
-    { label: 'Total Patients', value: patients.length,                                              icon: '🧑‍⚕️', color: 'var(--primary)' },
-    { label: 'Active',         value: patients.filter(p => p.status === 'active').length,           icon: '✅',   color: '#3dffc0'        },
-    { label: 'Pending',        value: patients.filter(p => p.status === 'pending').length,          icon: '⏳',   color: '#f5a623'        },
-    { label: 'Discharged',     value: patients.filter(p => p.status === 'discharged').length,       icon: '🏠',   color: '#8899aa'        },
+    { label: 'Total Patients', value: patients.length,                                                      icon: '🧑‍⚕️', color: 'var(--primary)', filter: 'all',           isAttendFilter: false },
+    { label: 'Active',         value: patients.filter(p => p.status === 'active').length,                   icon: '✅',   color: '#3dffc0',        filter: 'active',        isAttendFilter: false },
+    { label: 'Pending',        value: patients.filter(p => p.status === 'pending').length,                  icon: '⏳',   color: '#f5a623',        filter: 'pending',       isAttendFilter: false },
+    { label: 'Discharged',     value: patients.filter(p => p.status === 'discharged').length,               icon: '🏠',   color: '#8899aa',        filter: 'discharged',    isAttendFilter: false },
+    { label: 'Attended',       value: patients.filter(p => (p.patient_history?.length || 0) > 0).length,   icon: '✔️',   color: '#3dffc0',        filter: 'attended',      isAttendFilter: true  },
+    { label: 'Yet to Attend',  value: patients.filter(p => (p.patient_history?.length || 0) === 0).length, icon: '🕐',   color: '#ff5c7c',        filter: 'yet_to_attend', isAttendFilter: true  },
   ]
 
-  return (
-    <div className="dashboard-layout">
+  const activeFilter = (s) => {
+    if (s.isAttendFilter) return attendFilter === s.filter
+    return statusFilter === s.filter
+  }
 
-      {/* ── Shared Sidebar ── */}
+  const handleStatClick = (s) => {
+    if (s.isAttendFilter) {
+      setAttendFilter(prev => prev === s.filter ? 'all' : s.filter)
+      setStatusFilter('all') // reset status filter when attend filter clicked
+    } else {
+      setStatusFilter(prev => prev === s.filter ? 'all' : s.filter)
+      setAttendFilter('all') // reset attend filter when status filter clicked
+    }
+  }
+
+  return (
+    <div className="dashboard-layout patient-portal">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <main className="dashboard-main">
-        {/* ── Topbar ── */}
         <header className="topbar">
           <div className="topbar-left">
             <button className="menu-btn" onClick={() => setSidebarOpen(s => !s)}><MenuIcon /></button>
             <div>
+                 <h2 className="page-title">Admin Portal</h2>
               <h2 className="page-title">Patient Management</h2>
               <p className="page-date">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
             </div>
@@ -349,10 +358,20 @@ export default function PatientPortal() {
 
         <div className="dashboard-content">
 
-          {/* ── Stats ── */}
+          {/* ── Stats / KPI ── */}
           <section className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
             {stats.map((s, i) => (
-              <div key={i} className="stat-card anim-fade-up" style={{ animationDelay: `${i * 0.07}s` }}>
+              <div
+                key={i}
+                className="stat-card anim-fade-up"
+                style={{
+                  animationDelay: `${i * 0.07}s`,
+                  cursor: 'pointer',
+                  outline: activeFilter(s) ? `2px solid ${s.color}` : 'none',
+                  transition: 'outline 0.15s',
+                }}
+                onClick={() => handleStatClick(s)}
+              >
                 <div className="stat-icon" style={{ background: `${s.color}18`, color: s.color }}>{s.icon}</div>
                 <div className="stat-body">
                   <div className="stat-value">{s.value}</div>
@@ -361,6 +380,22 @@ export default function PatientPortal() {
               </div>
             ))}
           </section>
+
+          {/* ── Active filter badge ── */}
+          {(statusFilter !== 'all' || attendFilter !== 'all') && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-3)' }}>Filtering by:</span>
+              <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--primary)', background: 'rgba(99,102,241,0.1)', padding: '2px 10px', borderRadius: 20 }}>
+                {attendFilter !== 'all' ? (attendFilter === 'attended' ? 'Attended' : 'Yet to Attend') : statusFilter}
+              </span>
+              <button
+                onClick={() => { setStatusFilter('all'); setAttendFilter('all') }}
+                style={{ fontSize: '0.75rem', color: 'var(--text-3)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+              >
+                Clear
+              </button>
+            </div>
+          )}
 
           {/* ── Fetch error ── */}
           {fetchError && (
@@ -378,10 +413,9 @@ export default function PatientPortal() {
             <div className="panel-header">
               <h3 className="panel-title">All Patients</h3>
               <div className="panel-actions" style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                {/* Status filter */}
                 <select
                   value={statusFilter}
-                  onChange={e => setStatusFilter(e.target.value)}
+                  onChange={e => { setStatusFilter(e.target.value); setAttendFilter('all') }}
                   className="input-field"
                   style={{ appearance: 'none', padding: '6px 12px', fontSize: '0.82rem', width: 'auto', minWidth: 130 }}
                 >
@@ -391,7 +425,6 @@ export default function PatientPortal() {
                   <option value="discharged">Discharged</option>
                 </select>
 
-                {/* Search */}
                 <div className="search-wrap">
                   <SearchIcon />
                   <input className="search-input" placeholder="Search patients…"
@@ -408,18 +441,19 @@ export default function PatientPortal() {
                   <p style={{ fontSize: '2rem', marginBottom: 8 }}>🏥</p>
                   <p style={{ color: 'var(--text-2)', fontWeight: 600, marginBottom: 4 }}>No patients found</p>
                   <p style={{ color: 'var(--text-3)', fontSize: '0.85rem' }}>
-                    {search || statusFilter !== 'all' ? 'Try adjusting your filters.' : 'Add your first patient to get started.'}
+                    {search || statusFilter !== 'all' || attendFilter !== 'all' ? 'Try adjusting your filters.' : 'Add your first patient to get started.'}
                   </p>
                 </div>
               ) : (
                 filtered.map(p => (
-                  <div key={p.id} className="patient-row">
-                    {/* Avatar */}
+                  <div
+                    key={p.id}
+                    className="patient-row"
+                    onClick={() => navigate(`/admin/patient/${p.id}`)}
+                  >
                     <div className="patient-avatar" style={{ background: 'rgba(99,102,241,0.15)', color: 'var(--primary)' }}>
                       {p.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '??'}
                     </div>
-
-                    {/* Info */}
                     <div className="patient-info">
                       <div className="patient-name">{p.name}</div>
                       <div className="patient-meta">
@@ -428,8 +462,6 @@ export default function PatientPortal() {
                         {p.phone ? ` · ${p.phone}` : ''}
                       </div>
                     </div>
-
-                    {/* Right side */}
                     <div className="patient-right">
                       <StatusPill status={p.status} />
                       {p.doctors && (
@@ -443,7 +475,6 @@ export default function PatientPortal() {
               )}
             </div>
 
-            {/* Footer count */}
             {!loading && filtered.length > 0 && (
               <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ color: 'var(--text-3)', fontSize: '0.78rem' }}>
@@ -460,14 +491,12 @@ export default function PatientPortal() {
         </div>
       </main>
 
-      {/* ── Add Patient Modal ── */}
       <AddPatientModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         onSuccess={() => { setToast('Patient added successfully!'); fetchPatients() }}
       />
 
-      {/* ── Toast ── */}
       {toast && (
         <div style={{
           position: 'fixed', bottom: 24, right: 24, zIndex: 2000,
@@ -482,6 +511,7 @@ export default function PatientPortal() {
       )}
 
       <style>{`
+        .patient-portal .search-wrap { color: rgba(255,255,255,0.9); }
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(10px); }
           to   { opacity: 1; transform: translateY(0); }
